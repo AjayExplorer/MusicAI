@@ -144,11 +144,11 @@ export default function App() {
         setStep(2);
         setIsLoading(true);
 
-        setTimeout(async () => {
-            await fetchSongs();
-            setStep(3);
-            setIsLoading(false);
-        }, 1500); // Super fast algorithm
+        // Instantly run the algorithm and fetch songs
+        await fetchSongs();
+
+        setStep(3);
+        setIsLoading(false);
     };
 
     const playPreview = (url, id) => {
