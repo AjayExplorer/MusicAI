@@ -7,6 +7,24 @@ const LANGUAGES = [
     "Spanish", "Korean", "Japanese"
 ];
 
+const LANG_COUNTRY_MAP = {
+    "Malayalam": "IN", "Tamil": "IN", "Telugu": "IN", "Hindi": "IN", "Kannada": "IN", "Punjabi": "IN",
+    "English": "US", "Spanish": "ES", "Korean": "KR", "Japanese": "JP", "French": "FR", "Arabic": "AE", "Portuguese": "BR", "German": "DE", "Russian": "RU", "Turkish": "TR"
+};
+
+const LANG_ARTIST_MAP = {
+    "Malayalam": ["Sushin Shyam", "Gopi Sundar", "Shaan Rahman", "Hesham Abdul", "Vidyasagar", "Deepak Dev", "Vishnu Vijay"],
+    "Tamil": ["Anirudh", "A.R. Rahman", "Harris Jayaraj", "Yuvan Shankar Raja", "Santhosh Narayanan", "GV Prakash"],
+    "Telugu": ["Thaman S", "Devi Sri Prasad", "Anup Rubens", "Mickey J Meyer", "Mani Sharma"],
+    "Hindi": ["Arijit Singh", "Pritam", "Amit Trivedi", "Vishal-Shekhar", "Shreya Ghoshal"],
+    "English": ["The Weeknd", "Taylor Swift", "Drake", "Dua Lipa", "Billie Eilish"],
+    "Kannada": ["Arjun Janya", "Ravi Basrur", "V. Harikrishna", "Ajaneesh Loknath"],
+    "Punjabi": ["Diljit Dosanjh", "AP Dhillon", "Karan Aujla", "Sidhu Moose Wala"],
+    "Spanish": ["Bad Bunny", "J Balvin", "Rosalia", "Shakira", "Karol G"],
+    "Korean": ["BTS", "BLACKPINK", "NewJeans", "EXO", "TWICE"],
+    "Japanese": ["YOASOBI", "Kenshi Yonezu", "RADWIMPS", "Ado", "Vaundy"]
+};
+
 // 🧠 THE ALGORITHM: Analyzes the pixels of the image to determine the exact mood and theme
 const analyzeImageVibe = (imgElement) => {
     const canvas = document.createElement('canvas');
@@ -99,22 +117,28 @@ export default function App() {
         setAnalysisData(vibeData);
 
         try {
-            // 3. Construct a highly targeted query specific to the picture's vibe + language
-            // Example: "Malayalam romantic" or "Malayalam lofi bgm"
-            const selectedSubTag = vibeData.searchTags[Math.floor(Math.random() * vibeData.searchTags.length)];
-            const query = encodeURIComponent(`${language} ${vibeData.mood} ${selectedSubTag}`.trim());
+            // 3. Construct a highly targeted query specific to the picture's vibe + native artists
+            // By picking native artists, we 100% guarantee the songs will be in the correct language
+            const artistsList = LANG_ARTIST_MAP[language];
+            const selectedArtist = artistsList ? artistsList[Math.floor(Math.random() * artistsList.length)] : language;
 
-            const response = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=4`);
+            const query = encodeURIComponent(`${selectedArtist} ${vibeData.mood}`.trim());
+            const countryCode = LANG_COUNTRY_MAP[language] || "US";
+
+            const response = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=10&country=${countryCode}`);
             const data = await response.json();
 
-            // 4. Fallback search if iTunes is being too strict
+            // 4. Fallback search if the mood combined with artist is too strict
             let finalResults = data.results;
             if (finalResults.length === 0) {
-                const fallbackQuery = encodeURIComponent(`${language} ${vibeData.mood}`);
-                const fallbackRes = await fetch(`https://itunes.apple.com/search?term=${fallbackQuery}&entity=song&limit=4`);
+                const fallbackQuery = encodeURIComponent(`${selectedArtist}`);
+                const fallbackRes = await fetch(`https://itunes.apple.com/search?term=${fallbackQuery}&entity=song&limit=10&country=${countryCode}`);
                 const fallbackData = await fallbackRes.json();
                 finalResults = fallbackData.results;
             }
+
+            // Ensure we strictly just pick 4 results
+            finalResults = finalResults.slice(0, 4);
 
             const tracks = finalResults.map(track => ({
                 id: track.trackId,
